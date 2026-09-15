@@ -20,26 +20,23 @@ class KVStore:
             f.write(json.dumps(record) + '\n')
 
     def load(self):
-        with open('./logs.jsonl', 'r', encoding='utf-8') as f:
-            for line in f:
-                if not line.strip(): # "" == False
-                    continue
+        try:
+            with open('./logs.jsonl', 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip():  # "" == False
+                        continue
 
-                record = json.loads(line)
-                if record['op'] == 'set':
-                    self.data[record['key']] = record['value']
+                    record = json.loads(line)
+                    if record['op'] == 'set':
+                        self.data[record['key']] = record['value']
 
-                if record['op'] == 'delete':
-                    self.data.pop(record['key'], None)
+                    if record['op'] == 'delete':
+                        self.data.pop(record['key'], None)
+        except FileNotFoundError:
+            return
+
 
 #TEST
-store = KVStore()
-#
-# store.set('name', 'slime')
-# store.set('name', 'skeleton')
-# print(store.get('name'))
-# store.delete('name')
-# print(store.get('name'))
-
-store.load()
-print(store.data)
+# store = KVStore()
+# store.load()
+# print(store.data)
