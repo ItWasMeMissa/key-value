@@ -1,24 +1,6 @@
 import json
 
 class KVStore:
-    def __init__(self):
-        self.data = {}
-
-    def set(self, key, value=None):
-        self.data[key] = value
-        record = {'op':'set','key': key, 'value': value}
-        with open('./logs.jsonl', 'a', encoding='utf-8') as f:
-            f.write(json.dumps(record) + '\n')
-
-    def get(self, key):
-        return self.data.get(key)
-
-    def delete(self, key):
-        self.data.pop(key, None)
-        record = {'op': 'delete', 'key': key}
-        with open('./logs.jsonl', 'a', encoding='utf-8') as f:
-            f.write(json.dumps(record) + '\n')
-
     def load(self):
         try:
             with open('./logs.jsonl', 'r', encoding='utf-8') as f:
@@ -35,6 +17,27 @@ class KVStore:
         except FileNotFoundError:
             return
 
+    def __init__(self):
+        self.data = {}
+        self.load()
+
+
+    def _append_log(self, record): #test name?
+        with open('./logs.jsonl', 'a', encoding='utf-8') as f:
+            f.write(json.dumps(record) + '\n')
+
+    def set(self, key, value=None):
+        self.data[key] = value
+        record = {'op':'set','key': key, 'value': value}
+        self._append_log(record)
+
+    def get(self, key):
+        return self.data.get(key)
+
+    def delete(self, key):
+        self.data.pop(key, None)
+        record = {'op': 'delete', 'key': key}
+        self._append_log(record)
 
 #TEST
 # store = KVStore()
