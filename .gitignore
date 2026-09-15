@@ -1,5 +1,6 @@
+.idea/
 venv/
 .venv/
 __pycache__/
 *.pyc
-.idea/logs.jsonl
+logs.jsonl
