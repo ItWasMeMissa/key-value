@@ -29,13 +29,22 @@ class KVStore:
             f.write(json.dumps(record) + '\n')
 
     def set(self, key, value=None, ttl=None):
+        expire_at = None
+
         if ttl is not None:
-            ttl += time.time()
-            self.data[key] = {'value': value, 'expire_at': ttl}
-        else:
-            self.data[key] = {'value': value, 'expire_at': ttl}
-        # how note record time? Days Hours Sec "%H:%M:%S in cli?"
-        record = {'op':'set','key': key, 'value': value, 'expire_at': ttl}
+            expire_at = time.time() + ttl
+
+        self.data[key] = {
+            'value': value,
+            'expire_at': expire_at
+        }
+
+        record = {
+            'op': 'set',
+            'key': key,
+            'value': value,
+            'expire_at': expire_at
+        }
         self._append_log(record)
 
     def get(self, key):
