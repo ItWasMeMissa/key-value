@@ -1,4 +1,10 @@
 from key_value import KVStore
+import os, pytest
+
+@pytest.fixture(autouse=True)
+def clean_log():
+    if os.path.exists('./logs.jsonl'):
+        os.remove('./logs.jsonl')
 
 #TEST
 def test_get_exist_store():
