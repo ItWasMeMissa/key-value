@@ -82,7 +82,7 @@ class KVStore:
         if self.data[key]['expire_at'] != None:
             # The key has an expiration time, so check whether it has expired.
             if self.data[key]['expire_at'] < time.time():
-                self.data.pop(key, None)
+                self.delete(key)
                 return None
 
         # The key exists and has not expired.
