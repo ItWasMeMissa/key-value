@@ -48,22 +48,18 @@ class KVStore:
         self._append_log(record)
 
     def get(self, key):
-        if not self.data.get(key): #None == False
-            return 'not found'
-        else:
+        result = self.data.get(key, "NOT_FOUND")
+        if result == "NOT_FOUND":
+            return None
+
+        if self.data[key]['expire_at'] != None:
             if self.data[key]['expire_at'] < time.time():
-                return self.data[key]
-            else:
-                self.delete(key)
+                self.data.pop(key, None)
+                return None
+
+        return self.data[key]['value']
 
     def delete(self, key):
         self.data.pop(key, None)
         record = {'op': 'delete', 'key': key}
         self._append_log(record)
-
-#TEST
-# store = KVStore()
-#
-# print(store.get('test'))
-#
-# print(store.data)
