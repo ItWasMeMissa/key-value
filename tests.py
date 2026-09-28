@@ -1,4 +1,6 @@
-from key_value import KVStore
+import json
+
+from key_value import main
 import os, pytest
 
 @pytest.fixture(autouse=True)
@@ -7,29 +9,84 @@ def clean_log():
         os.remove('./logs.jsonl')
 
 #TEST
-def test_get_exist_store():
-    store = KVStore()
+def test():
+    with pytest.raises(SystemExit):
+        main()
 
-    store.set("name", "slime")
-    store.set("hp", 100)
-    store.set("gold", 50)
+# python cli.py set slime 1
+def test_set():
+    main([
+        'set', 'slime', '1'
+    ])
 
-    assert store.get('hp') == 100
+    with open('./logs.jsonl', 'r') as f:
+        record = json.loads(f.readline())
 
-def test_get_not_exist_store():
-    store = KVStore()
+    assert record['op'] == 'set'
+    assert record['key'] == 'slime'
+    assert record['value'] == '1'
+    assert record['expire_at'] is None
 
-    assert store.get('miew') == None
+# python cli.py get slime
+def test_get(capsys):
+    main([
+        'set', 'slime', '1'
+    ])
 
-def test_delete_removes_key():
-    store = KVStore()
-    store.set('temp', 'x')
-    store.delete('temp')
+    main([
+        'get', 'slime'
+    ])
 
-    assert store.get('temp') is None
+    assert capsys.readouterr().out == '1\n'
 
-def test_ttl_expired_returns_none():
-    store = KVStore()
-    store.set('temp', 'x', ttl=-5)  # Spoiled
+# python cli.py delete slime
+def test_delete():
+    main([
+        'set', 'slime', '1'
+    ])
 
-    assert store.get('temp') is None
+    main([
+        'delete', 'slime'
+    ])
+
+    with open('./logs.jsonl', 'r') as f:
+        records = [json.loads(line) for line in f]
+
+    assert records[0]['op'] == 'set'
+    assert records[0]['key'] == 'slime'
+    assert records[0]['value'] == '1'
+    assert records[0]['expire_at'] is None
+
+    assert records[1]['op'] == 'delete'
+    assert records[1]['key'] == 'slime'
+
+
+def test_set_ttl():
+    main([
+        'set', 'slime', '1',
+        '--ttl', '10'
+    ])
+
+    with open('./logs.jsonl', 'r') as f:
+        record = json.loads(f.readline())
+
+    assert record['expire_at'] is not None
+
+def test_expired_ttl(capsys):
+    main([
+        'set', 'slime', '1',
+        '--ttl', '-1'
+    ])
+
+    main([
+        'get', 'slime'
+    ])
+
+    assert capsys.readouterr().out == 'None\n'
+
+    with open('./logs.jsonl', 'r') as f:
+        records = [json.loads(line) for line in f]
+
+    assert records[0]['op'] == 'set'
+    assert records[1]['op'] == 'delete'
+    assert records[1]['key'] == 'slime'

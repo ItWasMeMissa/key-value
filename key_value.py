@@ -1,97 +1,114 @@
-import json, time
+import json, time, argparse
+
+KVStore = argparse.ArgumentParser()
+
+subparsers = KVStore.add_subparsers()
+
+data = {}
+
+def load():
+    try:
+        with open('./logs.jsonl', 'r', encoding='utf-8') as f:
+            for line in f:
+                if not line.strip():
+                    continue
+
+                record = json.loads(line)
+
+                if record['op'] == 'set':
+                    data[record['key']] = {
+                        'value': record['value'],
+                        'expire_at': record['expire_at']
+                    }
+
+                if record['op'] == 'delete':
+                    data.pop(record['key'], None)
+
+    except FileNotFoundError:
+        return
+
+load()
+
+set_parser = subparsers.add_parser('set')
+set_parser.add_argument('key')
+set_parser.add_argument('value')
+set_parser.add_argument('--ttl', type=int)
+set_parser.set_defaults(func='set')
 
 
-class KVStore:
+get_parser = subparsers.add_parser('get')
+get_parser.add_argument('key')
+get_parser.set_defaults(func='get')
 
-    def load(self):
-        # Rebuild the current state of the store from the log file.
-        # The log contains all operations that happened before the program started.
-        try:
-            with open('./logs.jsonl', 'r', encoding='utf-8') as f:
-                for line in f:
-                    if not line.strip():
-                        # Skip empty lines because they are not valid JSON records.
-                        continue
 
-                    record = json.loads(line)
+delete_parser = subparsers.add_parser('delete')
+delete_parser.add_argument('key')
+delete_parser.set_defaults(func='delete')
 
-                    if record['op'] == 'set':
-                        # Restore the key with both its value and expiration time.
-                        self.data[record['key']] = {
-                            'value': record['value'],
-                            'expire_at': record['expire_at']
-                        }
 
-                    if record['op'] == 'delete':
-                        # Reproduce the deletion from the log.
-                        self.data.pop(record['key'], None)
+def _append_log(record):
+    with open('./logs.jsonl', 'a', encoding='utf-8') as f:
+        f.write(json.dumps(record) + '\n')
 
-        except FileNotFoundError:
-            # There is no log file on the first run, so there is nothing to load.
-            return
 
-    def __init__(self):
-        # data contains the current state of the key-value store.
-        # The log file is only the history used to rebuild this state.
-        self.data = {}
+def set_value(key, value=None, ttl=None):
+    expire_at = None
 
-        # Restore previously saved data when creating the store.
-        self.load()
+    if ttl is not None:
+        expire_at = time.time() + ttl
 
-    def _append_log(self, record):
-        # Save one operation to the log.
-        # The log keeps the history so the store can be restored after restarting.
-        with open('./logs.jsonl', 'a', encoding='utf-8') as f:
-            f.write(json.dumps(record) + '\n')
+    data[key] = {
+        'value': value,
+        'expire_at': expire_at
+    }
 
-    def set(self, key, value=None, ttl=None):
-        # Store a value under a key.
-        # ttl is an optional lifetime of the key in seconds.
-        expire_at = None
+    record = {
+        'op': 'set',
+        'key': key,
+        'value': value,
+        'expire_at': expire_at
+    }
 
-        if ttl is not None:
-            # Convert the lifetime into an exact expiration timestamp.
-            # Example: current time + 10 seconds = the time when the key expires.
-            expire_at = time.time() + ttl
+    _append_log(record)
 
-        # Update the current state of the store.
-        self.data[key] = {
-            'value': value,
-            'expire_at': expire_at
-        }
 
-        # Save the operation to the log so it can be restored after restarting.
-        record = {
-            'op': 'set',
-            'key': key,
-            'value': value,
-            'expire_at': expire_at
-        }
+def delete(key):
+    data.pop(key, None)
 
-        self._append_log(record)
+    record = {'op': 'delete', 'key': key}
+    _append_log(record)
 
-    def get(self, key):
-        # Return the value stored under the key.
-        # Before returning it, check whether the key has expired.
-        result = self.data.get(key, "NOT_FOUND")
 
-        if result == "NOT_FOUND":
-            # The key does not exist in the current store.
+def get(key):
+    result = data.get(key, "NOT_FOUND")
+
+    if result == "NOT_FOUND":
+        return None
+
+    if data[key]['expire_at'] is not None:
+        if data[key]['expire_at'] < time.time():
+            delete(key)
             return None
 
-        if self.data[key]['expire_at'] != None:
-            # The key has an expiration time, so check whether it has expired.
-            if self.data[key]['expire_at'] < time.time():
-                self.delete(key)
-                return None
+    return data[key]['value']
 
-        # The key exists and has not expired.
-        return self.data[key]['value']
 
-    def delete(self, key):
-        # Remove the key from the current state of the store.
-        self.data.pop(key, None)
+def main(args=None):
+    args = KVStore.parse_args(args)
 
-        # Save the deletion to the log so it will stay deleted after restarting.
-        record = {'op': 'delete', 'key': key}
-        self._append_log(record)
+    if not hasattr(args, 'func'):
+        KVStore.print_help()
+        return
+
+    if args.func == 'set':
+        set_value(args.key, args.value, args.ttl)
+
+    if args.func == 'get':
+        print(get(args.key))
+
+    if args.func == 'delete':
+        delete(args.key)
+
+
+if __name__ == '__main__':
+    main()
