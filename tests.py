@@ -1,25 +1,25 @@
 import json
+import pytest
 
-from key_value import main
-import os, pytest
+from key_value import KVStore
 
-@pytest.fixture(autouse=True)
-def clean_log():
-    if os.path.exists('./logs.jsonl'):
-        os.remove('./logs.jsonl')
 
-#TEST
-def test():
+@pytest.fixture
+def store(tmp_path):
+    return KVStore(tmp_path / 'logs.jsonl')
+
+
+def test_no_command(store):
     with pytest.raises(SystemExit):
-        main()
+        store.main([])
 
-# python cli.py set slime 1
-def test_set():
-    main([
+
+def test_set(store):
+    store.main([
         'set', 'slime', '1'
     ])
 
-    with open('./logs.jsonl', 'r') as f:
+    with open(store.log_path, 'r') as f:
         record = json.loads(f.readline())
 
     assert record['op'] == 'set'
@@ -27,29 +27,29 @@ def test_set():
     assert record['value'] == '1'
     assert record['expire_at'] is None
 
-# python cli.py get slime
-def test_get(capsys):
-    main([
+
+def test_get(store, capsys):
+    store.main([
         'set', 'slime', '1'
     ])
 
-    main([
+    store.main([
         'get', 'slime'
     ])
 
     assert capsys.readouterr().out == '1\n'
 
-# python cli.py delete slime
-def test_delete():
-    main([
+
+def test_delete(store):
+    store.main([
         'set', 'slime', '1'
     ])
 
-    main([
+    store.main([
         'delete', 'slime'
     ])
 
-    with open('./logs.jsonl', 'r') as f:
+    with open(store.log_path, 'r') as f:
         records = [json.loads(line) for line in f]
 
     assert records[0]['op'] == 'set'
@@ -61,32 +61,49 @@ def test_delete():
     assert records[1]['key'] == 'slime'
 
 
-def test_set_ttl():
-    main([
+def test_set_ttl(store):
+    store.main([
         'set', 'slime', '1',
         '--ttl', '10'
     ])
 
-    with open('./logs.jsonl', 'r') as f:
+    with open(store.log_path, 'r') as f:
         record = json.loads(f.readline())
 
     assert record['expire_at'] is not None
 
-def test_expired_ttl(capsys):
-    main([
+
+def test_expired_ttl(store, capsys):
+    store.main([
         'set', 'slime', '1',
         '--ttl', '-1'
     ])
 
-    main([
+    store.main([
         'get', 'slime'
     ])
 
     assert capsys.readouterr().out == 'None\n'
 
-    with open('./logs.jsonl', 'r') as f:
+    with open(store.log_path, 'r') as f:
         records = [json.loads(line) for line in f]
 
     assert records[0]['op'] == 'set'
     assert records[1]['op'] == 'delete'
     assert records[1]['key'] == 'slime'
+
+
+def test_get_missing_key(store, capsys):
+    store.main([
+        'get', 'slime'
+    ])
+
+    assert capsys.readouterr().out == 'None\n'
+
+
+def test_persistence(store):
+    store.set_value('slime', '1')
+
+    store = KVStore(store.log_path)
+
+    assert store.get('slime') == '1'

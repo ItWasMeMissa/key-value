@@ -17,11 +17,11 @@ A small key-value storage project written in Python.
 - [x] Load data from logs
 - [x] TTL
 - [x] `_append_log()` refactor
+- [x] Add tests with pytest
+- [x] CLI
 
 ### Next steps
 
-- [ ] Add tests with pytest
 - [ ] Improve error handling
-- [ ] CLI
 - [ ] TCP/WebSocket server
 - [ ] Support multiple clients

@@ -1,33 +1,9 @@
 import json, time, argparse
 
-KVStore = argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 
-subparsers = KVStore.add_subparsers()
+subparsers = parser.add_subparsers(required=True)
 
-data = {}
-
-def load():
-    try:
-        with open('./logs.jsonl', 'r', encoding='utf-8') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-
-                record = json.loads(line)
-
-                if record['op'] == 'set':
-                    data[record['key']] = {
-                        'value': record['value'],
-                        'expire_at': record['expire_at']
-                    }
-
-                if record['op'] == 'delete':
-                    data.pop(record['key'], None)
-
-    except FileNotFoundError:
-        return
-
-load()
 
 set_parser = subparsers.add_parser('set')
 set_parser.add_argument('key')
@@ -46,69 +22,90 @@ delete_parser.add_argument('key')
 delete_parser.set_defaults(func='delete')
 
 
-def _append_log(record):
-    with open('./logs.jsonl', 'a', encoding='utf-8') as f:
-        f.write(json.dumps(record) + '\n')
+class KVStore:
+    def __init__(self, log_path='./logs.jsonl'):
+        self.data = {}
+        self.log_path = log_path
+        self.load()
+
+    def load(self):
+        try:
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+
+                    record = json.loads(line)
+
+                    if record['op'] == 'set':
+                        self.data[record['key']] = {
+                            'value': record['value'],
+                            'expire_at': record['expire_at']
+                        }
+
+                    if record['op'] == 'delete':
+                        self.data.pop(record['key'], None)
+
+        except FileNotFoundError:
+            return
+
+    def _append_log(self, record):
+        with open(self.log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(record) + '\n')
+
+    def set_value(self, key, value=None, ttl=None):
+        expire_at = None
+
+        if ttl is not None:
+            expire_at = time.time() + ttl
+
+        self.data[key] = {
+            'value': value,
+            'expire_at': expire_at
+        }
+
+        record = {
+            'op': 'set',
+            'key': key,
+            'value': value,
+            'expire_at': expire_at
+        }
+
+        self._append_log(record)
+
+    def delete(self, key):
+        self.data.pop(key, None)
+
+        record = {'op': 'delete', 'key': key}
+        self._append_log(record)
 
 
-def set_value(key, value=None, ttl=None):
-    expire_at = None
+    def get(self, key):
+        result = self.data.get(key, "NOT_FOUND")
 
-    if ttl is not None:
-        expire_at = time.time() + ttl
-
-    data[key] = {
-        'value': value,
-        'expire_at': expire_at
-    }
-
-    record = {
-        'op': 'set',
-        'key': key,
-        'value': value,
-        'expire_at': expire_at
-    }
-
-    _append_log(record)
-
-
-def delete(key):
-    data.pop(key, None)
-
-    record = {'op': 'delete', 'key': key}
-    _append_log(record)
-
-
-def get(key):
-    result = data.get(key, "NOT_FOUND")
-
-    if result == "NOT_FOUND":
-        return None
-
-    if data[key]['expire_at'] is not None:
-        if data[key]['expire_at'] < time.time():
-            delete(key)
+        if result == "NOT_FOUND":
             return None
 
-    return data[key]['value']
+        if self.data[key]['expire_at'] is not None:
+            if self.data[key]['expire_at'] < time.time():
+                self.delete(key)
+                return None
 
+        return self.data[key]['value']
 
-def main(args=None):
-    args = KVStore.parse_args(args)
+    def main(self, args=None):
+        args = parser.parse_args(args)
 
-    if not hasattr(args, 'func'):
-        KVStore.print_help()
-        return
+        if args.func == 'set':
+            self.set_value(args.key, args.value, args.ttl)
 
-    if args.func == 'set':
-        set_value(args.key, args.value, args.ttl)
+        if args.func == 'get':
+            print(self.get(args.key))
 
-    if args.func == 'get':
-        print(get(args.key))
-
-    if args.func == 'delete':
-        delete(args.key)
+        if args.func == 'delete':
+            self.delete(args.key)
 
 
 if __name__ == '__main__':
-    main()
+    store = KVStore()
+    store.main()
