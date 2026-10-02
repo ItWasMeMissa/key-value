@@ -1,6 +1,5 @@
 import json
 import pytest
-
 from key_value import KVStore
 
 
@@ -11,7 +10,7 @@ def store(tmp_path):
 
 def test_no_command(store):
     with pytest.raises(SystemExit):
-        store.main([])
+        store.execute('')
 
 
 def test_set(store):

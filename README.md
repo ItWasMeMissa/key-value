@@ -19,9 +19,9 @@ A small key-value storage project written in Python.
 - [x] `_append_log()` refactor
 - [x] Add tests with pytest
 - [x] CLI
+- [x] Improve error handling
 
 ### Next steps
 
-- [ ] Improve error handling
 - [ ] TCP/WebSocket server
 - [ ] Support multiple clients

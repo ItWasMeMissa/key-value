@@ -1,4 +1,6 @@
-import json, time, argparse
+import json
+import time
+import argparse
 
 parser = argparse.ArgumentParser()
 
@@ -93,19 +95,20 @@ class KVStore:
 
         return self.data[key]['value']
 
-    def main(self, args=None):
-        args = parser.parse_args(args)
+    def execute(self, line):
+        try:
+            args = parser.parse_args(line.split())
+        except SystemExit:
+            return '-ERR'
 
         if args.func == 'set':
             self.set_value(args.key, args.value, args.ttl)
+            return '+OK'
 
         if args.func == 'get':
-            print(self.get(args.key))
+            value = self.get(args.key)
+            return 'None' if value is None else value
 
         if args.func == 'delete':
             self.delete(args.key)
-
-
-if __name__ == '__main__':
-    store = KVStore()
-    store.main()
+            return '+OK'
