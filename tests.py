@@ -9,14 +9,11 @@ def store(tmp_path):
 
 
 def test_no_command(store):
-    with pytest.raises(SystemExit):
-        store.execute('')
+    store.execute('')
 
 
 def test_set(store):
-    store.main([
-        'set', 'slime', '1'
-    ])
+    store.execute('set slime 1')
 
     with open(store.log_path, 'r') as f:
         record = json.loads(f.readline())
@@ -28,25 +25,15 @@ def test_set(store):
 
 
 def test_get(store, capsys):
-    store.main([
-        'set', 'slime', '1'
-    ])
+    assert store.execute('set slime 1') == '+OK'
 
-    store.main([
-        'get', 'slime'
-    ])
-
-    assert capsys.readouterr().out == '1\n'
+    assert store.execute('get slime') == '1'
 
 
 def test_delete(store):
-    store.main([
-        'set', 'slime', '1'
-    ])
+    store.execute('set slime 1')
 
-    store.main([
-        'delete', 'slime'
-    ])
+    store.execute('delete slime')
 
     with open(store.log_path, 'r') as f:
         records = [json.loads(line) for line in f]
@@ -61,10 +48,7 @@ def test_delete(store):
 
 
 def test_set_ttl(store):
-    store.main([
-        'set', 'slime', '1',
-        '--ttl', '10'
-    ])
+    store.execute('set slime 1 --ttl 10')
 
     with open(store.log_path, 'r') as f:
         record = json.loads(f.readline())
@@ -73,31 +57,21 @@ def test_set_ttl(store):
 
 
 def test_expired_ttl(store, capsys):
-    store.main([
-        'set', 'slime', '1',
-        '--ttl', '-1'
-    ])
+    assert store.execute('set slime 1 --ttl -1') == '+OK'
 
-    store.main([
-        'get', 'slime'
-    ])
-
-    assert capsys.readouterr().out == 'None\n'
+    assert store.execute('get slime') == 'None'
 
     with open(store.log_path, 'r') as f:
         records = [json.loads(line) for line in f]
 
     assert records[0]['op'] == 'set'
+
     assert records[1]['op'] == 'delete'
     assert records[1]['key'] == 'slime'
 
 
 def test_get_missing_key(store, capsys):
-    store.main([
-        'get', 'slime'
-    ])
-
-    assert capsys.readouterr().out == 'None\n'
+    assert store.execute('get slime') == 'None'
 
 
 def test_persistence(store):
@@ -106,3 +80,4 @@ def test_persistence(store):
     store = KVStore(store.log_path)
 
     assert store.get('slime') == '1'
+

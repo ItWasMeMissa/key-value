@@ -1,11 +1,11 @@
 import json
 import time
 import argparse
+import threading
 
 parser = argparse.ArgumentParser()
 
 subparsers = parser.add_subparsers(required=True)
-
 
 set_parser = subparsers.add_parser('set')
 set_parser.add_argument('key')
@@ -27,6 +27,7 @@ delete_parser.set_defaults(func='delete')
 class KVStore:
     def __init__(self, log_path='./logs.jsonl'):
         self.data = {}
+        self._lock = threading.Lock()
         self.log_path = log_path
         self.load()
 
@@ -88,12 +89,11 @@ class KVStore:
         if result == "NOT_FOUND":
             return None
 
-        if self.data[key]['expire_at'] is not None:
-            if self.data[key]['expire_at'] < time.time():
-                self.delete(key)
-                return None
+        if result['expire_at'] is not None and result['expire_at'] < time.time():
+            self.delete(key)
+            return None
 
-        return self.data[key]['value']
+        return result['value']
 
     def execute(self, line):
         try:
@@ -101,14 +101,15 @@ class KVStore:
         except SystemExit:
             return '-ERR'
 
-        if args.func == 'set':
-            self.set_value(args.key, args.value, args.ttl)
-            return '+OK'
+        with self._lock:
+            if args.func == 'set':
+                self.set_value(args.key, args.value, args.ttl)
+                return '+OK'
 
-        if args.func == 'get':
-            value = self.get(args.key)
-            return 'None' if value is None else value
+            if args.func == 'get':
+                value = self.get(args.key)
+                return 'None' if value is None else value
 
-        if args.func == 'delete':
-            self.delete(args.key)
-            return '+OK'
+            if args.func == 'delete':
+                self.delete(args.key)
+                return '+OK'
