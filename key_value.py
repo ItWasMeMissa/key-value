@@ -23,7 +23,6 @@ delete_parser = subparsers.add_parser('delete')
 delete_parser.add_argument('key')
 delete_parser.set_defaults(func='delete')
 
-
 class KVStore:
     def __init__(self, log_path='./logs.jsonl'):
         self.data = {}
