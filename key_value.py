@@ -1,27 +1,6 @@
 import json
 import time
-import argparse
 import threading
-
-parser = argparse.ArgumentParser()
-
-subparsers = parser.add_subparsers(required=True)
-
-set_parser = subparsers.add_parser('set')
-set_parser.add_argument('key')
-set_parser.add_argument('value')
-set_parser.add_argument('--ttl', type=int)
-set_parser.set_defaults(func='set')
-
-
-get_parser = subparsers.add_parser('get')
-get_parser.add_argument('key')
-get_parser.set_defaults(func='get')
-
-
-delete_parser = subparsers.add_parser('delete')
-delete_parser.add_argument('key')
-delete_parser.set_defaults(func='delete')
 
 class KVStore:
     def __init__(self, log_path='./logs.jsonl'):
@@ -93,25 +72,6 @@ class KVStore:
             return None
 
         return result['value']
-
-    def execute(self, line):
-        try:
-            args = parser.parse_args(line.split())
-        except SystemExit:
-            return '-ERR'
-
-        with self._lock:
-            if args.func == 'set':
-                self.set_value(args.key, args.value, args.ttl)
-                return '+OK'
-
-            if args.func == 'get':
-                value = self.get(args.key)
-                return 'None' if value is None else value
-
-            if args.func == 'delete':
-                self.delete(args.key)
-                return '+OK'
 
     def execute_command(self, args):
         if not args:
