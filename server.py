@@ -28,7 +28,9 @@ def _get_message_and_parse(conn, addr):
             chunk = conn.recv(4)
 
             if len(buffer) >= 64000:
-                _choose_type_and_get_response_preset(('error', 'too heavy'))
+                conn.send(
+                    _choose_type_and_get_response_preset(('error', 'too heavy'))
+                )
                 return
 
             if not chunk:
