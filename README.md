@@ -20,8 +20,7 @@ A small key-value storage project written in Python.
 - [x] Add tests with pytest
 - [x] CLI
 - [x] Improve error handling
+- [x] TCP/WebSocket server
+- [x] Support multiple clients
 
-### Next steps
 
-- [ ] TCP/WebSocket server
-- [ ] Support multiple clients

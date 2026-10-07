@@ -58,3 +58,20 @@ def parse_command(args):
 
     return (cmd, args[pos:])
 
+def encode_simple(value):
+    data = value.encode('utf-8')
+    return b'+' + data + b'\r\n'
+
+def encode_error(value):
+    data = value.encode('utf-8')
+    return b'-' + data + b'\r\n'
+
+def encode_int(value):
+    return b':' + str(value).encode('utf-8') + b'\r\n'
+
+
+def encode_bulk(value):
+    if value is None:
+        return b'$-1\r\n'
+    data = value.encode('utf-8')
+    return b'$' + str(len(data)).encode() + b'\r\n' + data + b'\r\n'
