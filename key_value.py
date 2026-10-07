@@ -112,3 +112,56 @@ class KVStore:
             if args.func == 'delete':
                 self.delete(args.key)
                 return '+OK'
+
+    def execute_command(self, args):
+        if not args:
+            return ('error', 'ERR empty command')
+
+        try:
+            name = args[0].decode('utf-8').upper()
+            params = [a.decode('utf-8') for a in args[1:]]
+        except UnicodeDecodeError:
+            return ('error', 'ERR unsupported encoding')
+
+        wrong_args = ('error', 'ERR wrong number of arguments')
+
+        with self._lock:
+            match name:
+                case 'PING':
+                    if params:
+                        return wrong_args
+                    return ('simple', 'PONG')
+
+                case 'SET':
+                    if len(params) not in (2, 4):
+                        return wrong_args
+
+                    ttl = None
+                    if len(params) == 4:
+                        if params[2].upper() != 'EX':
+                            return ('error', 'ERR syntax error')
+                        try:
+                            ttl = int(params[3])
+                        except ValueError:
+                            return ('error', 'ERR value is not an integer')
+                        if ttl <= 0:
+                            return ('error', 'ERR invalid expire time')
+
+                    self.set_value(params[0], params[1], ttl)
+                    return ('simple', 'OK')
+
+                case 'GET':
+                    if len(params) != 1:
+                        return wrong_args
+                    return ('bulk', self.get(params[0]))
+
+                case 'DEL':
+                    if len(params) != 1:
+                        return wrong_args
+                    existed = self.get(params[0]) is not None
+                    if existed:
+                        self.delete(params[0])
+                    return ('int', 1 if existed else 0)
+
+                case _:
+                    return ('error', 'ERR unknown command')

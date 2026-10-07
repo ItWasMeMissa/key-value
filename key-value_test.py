@@ -81,3 +81,6 @@ def test_persistence(store):
 
     assert store.get('slime') == '1'
 
+
+def test_execute_command(store):
+    assert store.execute_command([b'SET', b'a', b'1']) == ('simple', 'OK')
