@@ -5,7 +5,7 @@ It speaks the RESP protocol, so the standard `redis-cli` can connect to it.
 
 ## Status
 
-Work in progress. The core works: commands, persistence, key expiration and multiple clients.
+Completed as a learning project. The core works: commands, persistence, key expiration and multiple clients.
 See [Known limitations](#known-limitations) for what is missing.
 
 ## Features
