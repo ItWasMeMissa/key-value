@@ -1,6 +1,6 @@
 # Key-Value Store
 
-A small Redis-compatible key-value server written in Python.
+A small Redis-like key-value server with RESP support written in Python.
 It speaks the RESP protocol, so the standard `redis-cli` can connect to it.
 
 ## Status
